@@ -102,3 +102,13 @@ dist
 
 # TernJS port file
 .tern-port
+
+# environment variables
+/.env
+
+# Desktop Services Store
+.DS_Store
+
+# script to run in localhost
+run.sh
+
