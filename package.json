@@ -18,8 +18,11 @@
   },
   "homepage": "https://github.com/shizyu223/discord-util-bot#readme",
   "dependencies": {
+    "canvas": "^2.9.0",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
+    "discord.js": "^13.6.0",
+    "dotenv": "^16.0.0",
     "ejs": "~2.6.1",
     "express": "~4.16.1",
     "http-errors": "~1.6.3",
