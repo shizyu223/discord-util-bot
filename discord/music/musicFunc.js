@@ -8,9 +8,33 @@
 "use strict";
 
 const ytdl = require('ytdl-core');
+const gapi = require('gapi');
 const { MusicSubscription } = require('./subscription');
 
 var subscription;
+
+async function getURLsfromPlaylist(playlistid){
+    let result, request;
+    let videoURLs = [];
+    let errorvideos;
+    gapi.server.setApiKey(process.env.YOUTUBE_API_KEY);
+    gapi.server.load('youtube', 'v3', () => {
+        result = document.getElementById('result');
+        request = gapi.client.youtube.playlistItems.list({
+            playlistId: playlistid,
+            part: 'snippet,contentDetails',
+        });
+        request.execute((response) => {
+            for (let i = 0; i < response.items.length; i++) {
+                let snippet = response.items[i].snippet;
+                let video_url = 'https://youtu.be/' + `${snippet.resourceId.videoId}`;
+                if (ytdl.validateURL(video_url)) videoURLs.push(video_url);
+            }
+            errorvideos = response.items.length - videoURLs.length;
+        })
+    });
+    return [videoURLs, errorvideos];
+}
 
 async function musicPlay(message){
     // Extract Video URL from the message
@@ -19,24 +43,41 @@ async function musicPlay(message){
         message.reply("!play command - \"!play [Youtube url]\"\n for detail, please try !help command.");
         return;
     }    
-    let url;
-    // ttp -> http
-    if(url_.match('^h?ttps?://www.youtube.com/watch')){
-      if (url_.charAt(0) === 't') url = 'h' + url_.split('&')[0];
-      else url = url_.split('&')[0];
-    } else if(url_.match('^h?ttps?://youtu.be/')){
-      if (url_.charAt(0) === 't') url = 'h' + url_.split('?')[0];
-      else url = url_.split('?')[0];
-    }
-    // Judge whether the Youtube URL is valid
-    if (!ytdl.validateURL(url)) return message.reply(`${url} is not valid or not Youtube URL.`);
+
     // Get the VoiceChannel in which the message owner is
     const channel = message.member.voice.channel;
     // Get the textchannel where the message is emitted
     const chatChannel = message.channel;
     // Suspend if the message owner is not in any VoiceChannel
     if (!channel) return message.reply('Use !play command when you are in VoiceChannel.');
+ 
     
+    let url = [];
+    let playlistid;
+    let numErrorVideos = 0
+    // if URL is playlist
+    if(url_.match('^h?ttps?://www.youtube.com/playlist')){
+        let query = url_.split('?')[1];
+        playlistid = query.split('&').filter((q) => q.match('list=')).first().split('=')[1];
+        const [rawurl, ErrorVideos] = getURLsfromPlaylist(playlistid);
+        numErrorVideos = ErrorVideos;
+        if(message.content.split(' ')[2] === 'shuffle'){
+            url = shuffle(rawurl);
+        } else url = rawurl;
+    }
+    // if URL is video, ttp -> http
+    else {
+        if(url_.match('^h?ttps?://www.youtube.com/watch')){
+            if (url_.charAt(0) === 't') url = 'h' + url_.split('&')[0];
+            else url[0] = url_.split('&')[0];
+        } else if(url_.match('^h?ttps?://youtu.be/')){
+            if (url_.charAt(0) === 't') url = 'h' + url_.split('?')[0];
+            else url[0] = url_.split('?')[0];
+        }
+        // Judge whether the Youtube URL is valid
+        if (!ytdl.validateURL(url[0])) return message.reply(`${url[0]} is not valid or not Youtube URL.`);
+    }   
+   
     // If a connection to the guild doesn't already exist and the user is in a voice channel, join that channel
     // and create a subscription.
     if (!subscription) {
@@ -45,10 +86,12 @@ async function musicPlay(message){
 
     let initQueuepush = false;
     if(subscription.currentTrack === undefined) initQueuepush = true;
-    subscription.enqueue(url, message.author)
-        .then(() => {
-            if(initQueuepush === true) subscription.ProcessQueue(false);
-        });
+    for(let i = 0; i < url.length; i++) {
+        subscription.enqueue(url[i], message.author)
+            .then(() => {
+                if(initQueuepush === true) subscription.ProcessQueue(false);
+            });
+    }
 }
 
 async function musicQueue(message){
