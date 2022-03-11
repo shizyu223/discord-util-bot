@@ -17,7 +17,6 @@ module.exports = (client) => {
         if(newState.member.user.bot === true)return;
         notifChannelID.send(newState.member.displayName + " logged into __" + newState.channel.name +"__ !\n");
         const activeVoiceCh = gulid.channels.cache.filter(c => c.type === 'GUILD_VOICE' && c.members.size !== 0).size;
-        console.log(activeVoiceCh);
         for(let i = 0; i < activeVoiceCh; i++){
           const currentChannel = gulid.channels.cache.filter(c => c.type === 'GUILD_VOICE' && c.members.size !== 0).at(i);
           notifChannelID.send({content: currentChannel.members.size + " user(s) in __" + currentChannel.name + "__ channel.\n", files: [{attachment: await userIconsVoiceCh(currentChannel)}]});

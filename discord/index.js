@@ -28,6 +28,7 @@ if(!process.env.DISCORD_BOT_TOKEN){
 
 const plugins = [
   'enter',
+  'music',
 ];
 
 (async () =>{
