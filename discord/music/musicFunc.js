@@ -9,6 +9,7 @@
 
 const ytdl = require('ytdl-core');
 const { MusicSubscription } = require('./subscription');
+const { getURLsfromPlaylist } = require('./yt_search');
 
 var subscription;
 
@@ -31,15 +32,20 @@ async function musicPlay(message){
     let url = [];
     let playlistid;
     let numErrorVideos = 0
+    let rawurl, ErrorVideos;
     // if URL is playlist
     if(url_.match('^h?ttps?://www.youtube.com/playlist')){
         let query = url_.split('?')[1];
-        playlistid = query.split('&').filter((q) => q.match('list=')).first().split('=')[1];
-        const [rawurl, ErrorVideos] = getURLsfromPlaylist(playlistid)
-            .catch((err) => { return message.reply(`Youtube API error: ${err}`); });
+        console.log(query.split('&').filter((q) => q.match('list=')));
+        playlistid = query.split('&').filter((q) => q.match('list='))[0].split('=')[1];
+        try {
+            [rawurl, ErrorVideos] = await getURLsfromPlaylist(playlistid);
+        } catch (err) {
+            return message.reply(`Youtube API error: ${err}`);
+        }
         numErrorVideos = ErrorVideos;
         if(message.content.split(' ')[2] === 'shuffle'){
-            url = shuffle(rawurl);
+            // url = shuffle(rawurl);
         } else url = rawurl;
     }
     // if URL is video, ttp -> http
@@ -68,7 +74,7 @@ async function musicPlay(message){
     for(let i = 0; i < url.length; i++) {
         subscription.enqueue(url[i], message.author)
             .then(() => {
-                if(initQueuepush === true) subscription.ProcessQueue(false);
+                if(initQueuepush === true && i === 0) subscription.ProcessQueue(false);
             });
     }
 }
