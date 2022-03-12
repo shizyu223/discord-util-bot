@@ -8,7 +8,6 @@
 "use strict";
 
 const { google } = require('googleapis');
-const { validateURL } = require('ytdl-core');
 
 async function getURLsfromPlaylist(playlistid){
     let videoURLs = [];
@@ -20,19 +19,23 @@ async function getURLsfromPlaylist(playlistid){
         auth: process.env.YOUTUBE_API_KEY
       });
     do {
-        let res = await youtube.playlistItems.list({
+        let reqOps = {
             playlistId: playlistid,
             maxResults: 50,
-            pageToken: nextPageToken,
-            part: 'contentDetails',
-        });
-        console.log(res);
+            part: 'snippet',
+        }
+        if (nextPageToken) {
+            reqOps.pageToken = nextPageToken;
+        }
+        let res = await youtube.playlistItems.list(reqOps);
         if(res.data.error !== undefined) {
             throw res.data.error.message;
         }
         for (let i = 0; i < res.data.items.length; i++) {
-            let video_url = 'https://youtu.be/' + `${res.data.items[i].contentDetails.videoId}`;
-            if (validateURL(video_url)) videoURLs.push(video_url);
+            let video_url = 'https://youtu.be/' + `${res.data.items[i].snippet.resourceId.videoId}`;
+            if (!isEmpty(res.data.items[i].snippet.thumbnails)){
+                videoURLs.push(video_url);
+            }
         }
         nextPageToken = res.data.nextPageToken;
         totalVideos = res.data.pageInfo.totalResults;
@@ -43,6 +46,33 @@ async function getURLsfromPlaylist(playlistid){
     return [videoURLs, errorvideos];
 }
 
+async function validateVideoURL(url){
+    let videoId;
+    if(url.match('https?://www.youtube.com/watch')) {
+        videoId = url.split('=')[1];
+    } else if(url_.match('https?://youtu.be/')){
+        videoId = url.split('/')[3];
+    } else return false  
+    const youtube = google.youtube({
+        version: 'v3',
+        auth: process.env.YOUTUBE_API_KEY
+      });
+    let res = await youtube.videos.list({
+        id: videoId,
+        part: 'snippet',
+      });
+
+    // if a video is unavailable, totalResults is 0 and the array 'items' has no member.
+    if (res.data.pageInfo.totalResults !== 0) return true;
+    else return false;
+}
+
+function isEmpty(obj) {
+    const _isEmpty = Object.keys(obj).length === 0 && obj.constructor === Object;
+    return _isEmpty;
+}
+
 module.exports = {
-    getURLsfromPlaylist: getURLsfromPlaylist
+    getURLsfromPlaylist: getURLsfromPlaylist,
+    validateVideoURL: validateVideoURL
 }

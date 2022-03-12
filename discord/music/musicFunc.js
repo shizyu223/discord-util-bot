@@ -7,9 +7,8 @@
 
 "use strict";
 
-const ytdl = require('ytdl-core');
 const { MusicSubscription } = require('./subscription');
-const { getURLsfromPlaylist } = require('./yt_search');
+const { getURLsfromPlaylist, validateVideoURL } = require('./yt_search');
 
 var subscription;
 
@@ -56,9 +55,13 @@ async function musicPlay(message){
         } else if(url_.match('^h?ttps?://youtu.be/')){
             if (url_.charAt(0) === 't') url = 'h' + url_.split('?')[0];
             else url[0] = url_.split('?')[0];
+        } else {
+            return message.reply(`${url[0]} is not valid or not Youtube URL.`);
         }
         // Judge whether the Youtube URL is valid
-        if (!ytdl.validateURL(url[0])) return message.reply(`${url[0]} is not valid or not Youtube URL.`);
+        const validVideoURL = await validateVideoURL(url[0]);
+        console.log(validVideoURL);
+        if (!validVideoURL) return message.reply(`${url[0]} is not valid or not Youtube URL.`);
     }   
    
     console.log(numErrorVideos);

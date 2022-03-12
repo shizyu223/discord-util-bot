@@ -53,12 +53,3 @@ module.exports = (client) => {
         }
     })
 }
-
-function musicChannelCheck(message){
-    const musicChannel = message.client.channels.cache.filter((channel)=> channel.id === process.env.MUSIC_TEXTCHANNEL_ID).first();
-    if(message.channel == musicChannel)return true;
-    else {
-      message.reply(`音楽botのコマンドは${musicChannel.name}チャンネルでのみ有効です！`);
-      return false;
-    }
-}
