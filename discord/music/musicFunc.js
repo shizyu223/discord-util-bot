@@ -8,33 +8,9 @@
 "use strict";
 
 const ytdl = require('ytdl-core');
-const gapi = require('gapi');
 const { MusicSubscription } = require('./subscription');
 
 var subscription;
-
-async function getURLsfromPlaylist(playlistid){
-    let result, request;
-    let videoURLs = [];
-    let errorvideos;
-    gapi.server.setApiKey(process.env.YOUTUBE_API_KEY);
-    gapi.server.load('youtube', 'v3', () => {
-        result = document.getElementById('result');
-        request = gapi.client.youtube.playlistItems.list({
-            playlistId: playlistid,
-            part: 'snippet,contentDetails',
-        });
-        request.execute((response) => {
-            for (let i = 0; i < response.items.length; i++) {
-                let snippet = response.items[i].snippet;
-                let video_url = 'https://youtu.be/' + `${snippet.resourceId.videoId}`;
-                if (ytdl.validateURL(video_url)) videoURLs.push(video_url);
-            }
-            errorvideos = response.items.length - videoURLs.length;
-        })
-    });
-    return [videoURLs, errorvideos];
-}
 
 async function musicPlay(message){
     // Extract Video URL from the message
@@ -51,7 +27,7 @@ async function musicPlay(message){
     // Suspend if the message owner is not in any VoiceChannel
     if (!channel) return message.reply('Use !play command when you are in VoiceChannel.');
  
-    
+
     let url = [];
     let playlistid;
     let numErrorVideos = 0
@@ -59,7 +35,8 @@ async function musicPlay(message){
     if(url_.match('^h?ttps?://www.youtube.com/playlist')){
         let query = url_.split('?')[1];
         playlistid = query.split('&').filter((q) => q.match('list=')).first().split('=')[1];
-        const [rawurl, ErrorVideos] = getURLsfromPlaylist(playlistid);
+        const [rawurl, ErrorVideos] = getURLsfromPlaylist(playlistid)
+            .catch((err) => { return message.reply(`Youtube API error: ${err}`); });
         numErrorVideos = ErrorVideos;
         if(message.content.split(' ')[2] === 'shuffle'){
             url = shuffle(rawurl);
@@ -78,6 +55,8 @@ async function musicPlay(message){
         if (!ytdl.validateURL(url[0])) return message.reply(`${url[0]} is not valid or not Youtube URL.`);
     }   
    
+    console.log(numErrorVideos);
+
     // If a connection to the guild doesn't already exist and the user is in a voice channel, join that channel
     // and create a subscription.
     if (!subscription) {
